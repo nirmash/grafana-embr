@@ -21,17 +21,6 @@ def write_datasource_config():
     prom_url = os.environ.get("PROMETHEUS_URL", "https://production-prometheus-embr-1a780423.app.embr.azure")
     prov_dir = "/tmp/grafana/conf/provisioning/datasources"
     os.makedirs(prov_dir, exist_ok=True)
-    config = {
-        "apiVersion": 1,
-        "datasources": [{
-            "name": "Prometheus",
-            "type": "prometheus",
-            "access": "proxy",
-            "url": prom_url,
-            "isDefault": True,
-            "editable": True,
-        }],
-    }
     with open(f"{prov_dir}/prometheus.yaml", "w") as f:
         f.write(f"""apiVersion: 1
 datasources:
@@ -43,6 +32,36 @@ datasources:
     editable: true
 """)
     print(f"Datasource configured: {prom_url}", flush=True)
+
+
+def write_dashboard_config():
+    """Provision dashboards from /output/dashboards."""
+    prov_dir = "/tmp/grafana/conf/provisioning/dashboards"
+    dash_dir = "/tmp/grafana-dashboards"
+    os.makedirs(prov_dir, exist_ok=True)
+    os.makedirs(dash_dir, exist_ok=True)
+
+    # Copy dashboard JSON files from repo to a writable location
+    import shutil, glob
+    src_dir = "/output/dashboards"
+    if os.path.isdir(src_dir):
+        for f in glob.glob(f"{src_dir}/*.json"):
+            shutil.copy2(f, dash_dir)
+        print(f"Copied {len(os.listdir(dash_dir))} dashboard(s)", flush=True)
+
+    with open(f"{prov_dir}/dashboards.yaml", "w") as f:
+        f.write(f"""apiVersion: 1
+providers:
+  - name: default
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: {dash_dir}
+      foldersFromFilesStructure: false
+""")
+    print("Dashboard provisioning configured", flush=True)
 
 
 def start_grafana():
@@ -66,6 +85,7 @@ def start_grafana():
     print("Extraction complete", flush=True)
 
     write_datasource_config()
+    write_dashboard_config()
 
     # Create data directories
     os.makedirs("/tmp/grafana-data", exist_ok=True)
