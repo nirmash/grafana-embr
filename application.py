@@ -180,6 +180,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
                                    "content-encoding", "content-length"):
                 self.send_header(key, val)
         self.send_header("Content-Length", str(len(resp_body)))
+        self.send_header("Content-Encoding", "identity")
         self._no_cache()
         self.end_headers()
         self.wfile.write(resp_body)
