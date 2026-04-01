@@ -47,7 +47,7 @@ datasources:
 def start_grafana():
     global grafana_ready
     version = os.environ.get("GRAFANA_VERSION", "11.6.0")
-    tarball = f"grafana-{version}"
+    tarball = f"grafana-v{version}"
     url = f"https://dl.grafana.com/oss/release/grafana-{version}.linux-amd64.tar.gz"
 
     dest = f"/tmp/{tarball}.tar.gz"
