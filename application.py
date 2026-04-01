@@ -153,7 +153,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             body = self.rfile.read(length) if length else None
 
         headers = {}
-        for key in ("Content-Type", "Accept", "Accept-Encoding",
+        for key in ("Content-Type", "Accept",
                      "Authorization", "Cookie", "X-Grafana-Org-Id"):
             val = self.headers.get(key)
             if val:
