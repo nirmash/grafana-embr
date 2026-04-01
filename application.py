@@ -6,6 +6,7 @@ import time
 import os
 import json
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
@@ -160,7 +161,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
         try:
             req = Request(target, data=body, headers=headers, method=method)
-            with urlopen(req) as resp:
+            with urlopen(req, timeout=30) as resp:
                 self._send_proxy_response(resp)
         except HTTPError as e:
             self._send_proxy_response(e)
@@ -186,8 +187,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
         pass
 
 
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+
+
 if __name__ == "__main__":
     threading.Thread(target=start_grafana, daemon=True).start()
     print(f"Proxy listening on :{LISTEN_PORT}", flush=True)
-    server = HTTPServer(("0.0.0.0", LISTEN_PORT), ProxyHandler)
+    server = ThreadingHTTPServer(("0.0.0.0", LISTEN_PORT), ProxyHandler)
     server.serve_forever()
