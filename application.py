@@ -50,21 +50,18 @@ def start_grafana():
     tarball = f"grafana-{version}"
     url = f"https://dl.grafana.com/oss/release/grafana-{version}.linux-amd64.tar.gz"
 
+    dest = f"/tmp/{tarball}.tar.gz"
     print(f"Downloading Grafana v{version}...", flush=True)
-    import urllib.request, tarfile, io
-    # Stream download in chunks to avoid socket timeout on large files
-    with urllib.request.urlopen(url, timeout=30) as resp:
-        print(f"Download started ({resp.status})...", flush=True)
-        buf = io.BytesIO()
-        while True:
-            chunk = resp.read(1024 * 1024)  # 1MB chunks
-            if not chunk:
-                break
-            buf.write(chunk)
-        data = buf.getvalue()
-        print(f"Downloaded {len(data)} bytes, extracting...", flush=True)
-    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
+    subprocess.run(
+        ["curl", "-fSL", "--retry", "3", "--connect-timeout", "30",
+         "-o", dest, url],
+        check=True,
+    )
+    print(f"Download complete, extracting...", flush=True)
+    import tarfile
+    with tarfile.open(dest, mode="r:gz") as tar:
         tar.extractall(path="/tmp")
+    os.remove(dest)
     print("Extraction complete", flush=True)
 
     write_datasource_config()
