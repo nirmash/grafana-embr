@@ -103,7 +103,15 @@ def start_grafana():
 
 class ProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if not grafana_ready and self.path in ("/", "/health", "/api/health"):
+        # Always return 200 for health checks (Grafana uses /api/health, not /health)
+        if self.path in ("/health", "/-/ready"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+            msg = b"OK" if grafana_ready else b"Starting..."
+            self.wfile.write(msg)
+            return
+        if not grafana_ready and self.path in ("/", "/api/health"):
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
             self.end_headers()
