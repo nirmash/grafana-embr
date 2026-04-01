@@ -1,0 +1,6 @@
+version: 1
+platform: python
+platformVersion: "3.14"
+run:
+  port: 8080
+  startCommand: "python application.py"

@@ -1,0 +1,1 @@
+# No Python dependencies — Grafana runs as a standalone binary.
