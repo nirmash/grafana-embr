@@ -7,7 +7,7 @@ import os
 import json
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
-from urllib.error import URLError
+from urllib.error import URLError, HTTPError
 
 GRAFANA_PORT = 3000
 LISTEN_PORT = int(os.environ.get("PORT", 8080))
@@ -32,12 +32,6 @@ def write_datasource_config():
         }],
     }
     with open(f"{prov_dir}/prometheus.yaml", "w") as f:
-        import yaml
-        # Use json since yaml might not be available
-        pass
-
-    # Write as simple YAML manually
-    with open(f"{prov_dir}/prometheus.yaml", "w") as f:
         f.write(f"""apiVersion: 1
 datasources:
   - name: Prometheus
@@ -58,9 +52,16 @@ def start_grafana():
 
     print(f"Downloading Grafana v{version}...", flush=True)
     import urllib.request, tarfile, io
-    with urllib.request.urlopen(url, timeout=300) as resp:
+    # Stream download in chunks to avoid socket timeout on large files
+    with urllib.request.urlopen(url, timeout=30) as resp:
         print(f"Download started ({resp.status})...", flush=True)
-        data = resp.read()
+        buf = io.BytesIO()
+        while True:
+            chunk = resp.read(1024 * 1024)  # 1MB chunks
+            if not chunk:
+                break
+            buf.write(chunk)
+        data = buf.getvalue()
         print(f"Downloaded {len(data)} bytes, extracting...", flush=True)
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
         tar.extractall(path="/tmp")
@@ -149,20 +150,26 @@ class ProxyHandler(BaseHTTPRequestHandler):
         try:
             req = Request(target, data=body, headers=headers, method=method)
             with urlopen(req) as resp:
-                resp_body = resp.read()
-                self.send_response(resp.status)
-                for key, val in resp.getheaders():
-                    if key.lower() not in ("transfer-encoding", "connection",
-                                           "content-encoding", "content-length"):
-                        self.send_header(key, val)
-                self.send_header("Content-Length", str(len(resp_body)))
-                self.end_headers()
-                self.wfile.write(resp_body)
+                self._send_proxy_response(resp)
+        except HTTPError as e:
+            self._send_proxy_response(e)
         except URLError as e:
             self.send_response(502)
             self.send_header("Content-Type", "text/plain")
             self.end_headers()
             self.wfile.write(f"Grafana unavailable: {e}".encode())
+
+    def _send_proxy_response(self, resp):
+        resp_body = resp.read()
+        status = resp.status if hasattr(resp, "status") else resp.code
+        self.send_response(status)
+        for key, val in resp.getheaders():
+            if key.lower() not in ("transfer-encoding", "connection",
+                                   "content-encoding", "content-length"):
+                self.send_header(key, val)
+        self.send_header("Content-Length", str(len(resp_body)))
+        self.end_headers()
+        self.wfile.write(resp_body)
 
     def log_message(self, format, *args):
         pass
