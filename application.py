@@ -57,7 +57,14 @@ def start_grafana():
     url = f"https://dl.grafana.com/oss/release/grafana-{version}.linux-amd64.tar.gz"
 
     print(f"Downloading Grafana v{version}...", flush=True)
-    subprocess.run(f"curl -sL {url} | tar xz -C /tmp", shell=True, check=True)
+    import urllib.request, tarfile, io
+    with urllib.request.urlopen(url, timeout=300) as resp:
+        print(f"Download started ({resp.status})...", flush=True)
+        data = resp.read()
+        print(f"Downloaded {len(data)} bytes, extracting...", flush=True)
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
+        tar.extractall(path="/tmp")
+    print("Extraction complete", flush=True)
 
     write_datasource_config()
 
