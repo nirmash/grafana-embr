@@ -18,7 +18,7 @@ grafana_ready = False
 
 def write_datasource_config():
     """Write Prometheus datasource provisioning config."""
-    prom_url = os.environ.get("PROMETHEUS_URL", "http://localhost:9090")
+    prom_url = os.environ.get("PROMETHEUS_URL", "https://production-prometheus-embr-1a780423.app.embr.azure")
     prov_dir = "/tmp/grafana/conf/provisioning/datasources"
     os.makedirs(prov_dir, exist_ok=True)
     config = {
